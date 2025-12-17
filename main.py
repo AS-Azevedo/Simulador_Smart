@@ -3,63 +3,50 @@ import pandas as pd
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Simulador Comercial - Dark Mode",
-    page_icon="🎯",
+    page_title="Simulador Comercial - Elite",
+    page_icon="💰",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- ESTILIZAÇÃO CSS (MODO ESCURO / DARK MODE) ---
+# --- CSS ADAPTATIVO (AUTO THEME) ---
 st.markdown("""
 <style>
-    /* Fundo Geral */
-    .stApp {
-        background-color: #0E1117;
-        color: #FAFAFA;
-    }
-    
     /* Cartões de Métricas */
-    div[data-testid="stMetric"], .stMetric {
-        background-color: #262730 !important;
-        border: 1px solid #303030;
+    div[data-testid="stMetric"] {
+        background-color: rgba(128, 128, 128, 0.1);
+        border: 1px solid rgba(128, 128, 128, 0.2);
         padding: 15px;
         border-radius: 10px;
-        color: white !important;
     }
     
-    /* Textos de Label de Métrica */
-    div[data-testid="stMetricLabel"] {
-        color: #A0A0A0 !important;
+    /* Caixa de Totalização */
+    .total-box {
+        padding: 20px; 
+        border-radius: 10px; 
+        text-align: center; 
+        margin-top: 10px;
+        background-color: rgba(39, 174, 96, 0.15);
+        border: 2px solid #27ae60;
     }
     
-    /* Valor da Métrica */
-    div[data-testid="stMetricValue"] {
-        color: #FFFFFF !important;
+    .total-title {
+        color: inherit;
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+        opacity: 0.8;
     }
-
-    /* Inputs numéricos */
-    .stNumberInput input {
-        background-color: #1A1C24;
-        color: white;
+    
+    .total-value {
+        color: #27ae60;
+        font-size: 3rem;
+        font-weight: bold;
+        margin: 0;
     }
-
-    /* Abas */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1A1C24;
-        border-radius: 4px;
-        color: #FAFAFA;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #FF4B4B !important;
-        color: white !important;
-    }
-
-    /* Tabelas */
-    .stDataFrame, .stTable {
-        background-color: #262730; 
+    
+    /* Tabelas limpas */
+    .stDataFrame {
+        font-size: 0.9rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -68,7 +55,7 @@ st.markdown("""
 def formatar_moeda(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-def calcular_comissao_individual(valor):
+def calcular_comissao_closer(valor):
     base = 1000.00
     if valor < 30000: return 0.00, "Abaixo do Piso", "🔴"
     elif 30000 <= valor < 40000: return base / 2.0, "Ticket Mínimo", "🟠"
@@ -85,34 +72,72 @@ if 'lojas' not in st.session_state:
 # --- TÍTULO ---
 st.title("🎯 Central de Estratégia Comercial")
 
-# --- ABAS ---
 tab_closer, tab_sdr = st.tabs(["💼 Simulador CLOSER", "📡 Simulador SDR"])
 
 # ==============================================================================
-# ABA CLOSER
+# ABA 1: CLOSER
 # ==============================================================================
 with tab_closer:
     col_input, col_resumo = st.columns([1, 2])
 
+    # --- Lado Esquerdo: Inputs e Tabela de Referência ---
     with col_input:
         st.subheader("Nova Loja")
         with st.form("form_loja"):
             valor_contrato = st.number_input("Valor do Contrato (R$)", min_value=0.0, step=1000.0)
-            submitted = st.form_submit_button("➕ Adicionar ao Pipeline")
+            submitted = st.form_submit_button("➕ Adicionar ao Pipeline", use_container_width=True)
             
             if submitted and valor_contrato > 0:
-                comissao, desc, icon = calcular_comissao_individual(valor_contrato)
+                comissao, desc, icon = calcular_comissao_closer(valor_contrato)
                 st.session_state['lojas'].append({
                     "Valor Contrato": valor_contrato,
                     "Classificação": f"{icon} {desc}",
                     "Comissão Prevista": comissao
                 })
-                st.toast(f"Loja de {formatar_moeda(valor_contrato)} adicionada!", icon="✅")
+                st.toast(f"Loja adicionada!", icon="✅")
 
-        if st.button("🗑️ Limpar Pipeline"):
+        if st.button("🗑️ Limpar Pipeline", use_container_width=True):
             st.session_state['lojas'] = []
             st.rerun()
 
+        st.divider()
+        
+        # --- TABELA DE REFERÊNCIA DE COMISSÃO (PEDIDO NOVO) ---
+        st.subheader("📚 Tabela de Comissões")
+        st.markdown("Valores baseados no fechamento individual.")
+        
+        df_referencia = pd.DataFrame({
+            "Faixa de Contrato": [
+                "Abaixo de R$ 30k", 
+                "R$ 30k a R$ 39k", 
+                "R$ 40k a R$ 49k", 
+                "R$ 50k a R$ 59k", 
+                "R$ 60k a R$ 69k", 
+                "R$ 70k a R$ 89k", 
+                "Acima de R$ 90k"
+            ],
+            "Regra": [
+                "Zerado", 
+                "Base ÷ 2.0", 
+                "Base ÷ 1.5", 
+                "Base ÷ 1.2", 
+                "Base x 1.3", 
+                "Base x 1.5", 
+                "Base x 1.6"
+            ],
+            "Comissão (R$)": [
+                "R$ 0,00", 
+                "R$ 500,00", 
+                "R$ 666,67", 
+                "R$ 833,33", 
+                "R$ 1.300,00", 
+                "R$ 1.500,00", 
+                "R$ 1.600,00"
+            ]
+        })
+        st.dataframe(df_referencia, hide_index=True, use_container_width=True)
+
+    # --- Lado Direito: Resultados ---
     with col_resumo:
         total_fat = sum(l['Valor Contrato'] for l in st.session_state['lojas'])
         total_com_bruta = sum(l['Comissão Prevista'] for l in st.session_state['lojas'])
@@ -122,21 +147,11 @@ with tab_closer:
 
         st.subheader("Painel de Performance")
         kpi1, kpi2, kpi3 = st.columns(3)
-        
         kpi1.metric("Pipeline Total", formatar_moeda(total_fat))
-        
-        kpi2.metric(
-            "Status Gatilho (100k)", 
-            "LIBERADO" if gatilho_atingido else "BLOQUEADO",
-            delta=f"+ {formatar_moeda(total_fat - 100000)}" if gatilho_atingido else f"- Falta {formatar_moeda(falta_gatilho)}",
-            delta_color="normal" if gatilho_atingido else "inverse"
-        )
-        
-        kpi3.metric(
-            "💰 Sua Comissão", 
-            formatar_moeda(comissao_final),
-            delta="Confirmado" if gatilho_atingido else "Pendente",
-        )
+        kpi2.metric("Status Gatilho (100k)", "LIBERADO" if gatilho_atingido else "BLOQUEADO", 
+                    delta=f"Superavit: {formatar_moeda(total_fat - 100000)}" if gatilho_atingido else f"- Falta {formatar_moeda(falta_gatilho)}",
+                    delta_color="normal" if gatilho_atingido else "inverse")
+        kpi3.metric("💰 Sua Comissão", formatar_moeda(comissao_final))
 
         progresso = min(total_fat / 100000, 1.0)
         st.progress(progresso, text=f"Progresso para desbloqueio: {int(progresso*100)}%")
@@ -144,91 +159,86 @@ with tab_closer:
         if st.session_state['lojas']:
             st.divider()
             df = pd.DataFrame(st.session_state['lojas'])
-            df_display = df.copy()
-            df_display['Valor Contrato'] = df_display['Valor Contrato'].apply(formatar_moeda)
-            df_display['Comissão Prevista'] = df_display['Comissão Prevista'].apply(formatar_moeda)
-            st.dataframe(df_display, use_container_width=True, hide_index=True)
+            df_disp = df.copy()
+            df_disp['Valor Contrato'] = df_disp['Valor Contrato'].apply(formatar_moeda)
+            df_disp['Comissão Prevista'] = df_disp['Comissão Prevista'].apply(formatar_moeda)
+            st.dataframe(df_disp, use_container_width=True, hide_index=True)
 
 # ==============================================================================
-# ABA SDR (ATUALIZADA)
+# ABA 2: SDR
 # ==============================================================================
 with tab_sdr:
     
-    # --- CALCULADORA DE SCORECARD (NOVIDADE) ---
-    with st.expander("🕵️ Calculadora Rápida: Esse Lead é High Score?", expanded=True):
-        st.markdown("Marque o que o lead possui:")
-        col_checks_1, col_checks_2 = st.columns(2)
+    with st.expander("🕵️ Calculadora de Scorecard (Verificador)", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            s1 = 25 if st.checkbox("Unidades/Colab ≥ 200 (25 pts)") else 0
+            s2 = 20 if st.checkbox("Urgência (20 pts)") else 0
+            s3 = 20 if st.checkbox("Abertura (20 pts)") else 0
+        with c2:
+            s4 = 15 if st.checkbox("Dor clara (15 pts)") else 0
+            s5 = 10 if st.checkbox("Histórico troca (10 pts)") else 0
+            s6 = 10 if st.checkbox("Decisor acessível (10 pts)") else 0
         
-        with col_checks_1:
-            c1 = st.checkbox("Nº Unidades/Colaboradores ≥ 200 (25 pts)")
-            c2 = st.checkbox("Urgência do projeto (20 pts)")
-            c3 = st.checkbox("Abertura para proposta (20 pts)")
-        
-        with col_checks_2:
-            c4 = st.checkbox("Dor clara identificada (15 pts)")
-            c5 = st.checkbox("Histórico troca fornecedor (10 pts)")
-            c6 = st.checkbox("Tipo de síndico/decisor acessível (10 pts)")
-        
-        score_atual = (25 if c1 else 0) + (20 if c2 else 0) + (20 if c3 else 0) + \
-                      (15 if c4 else 0) + (10 if c5 else 0) + (10 if c6 else 0)
-        
-        st.write(f"**Score Atual:** {score_atual} / 100")
-        
-        if score_atual >= 75:
-            st.success("✅ **É UM LEAD HIGH SCORE!** (Contebilize abaixo)")
-        else:
-            st.error(f"❌ Lead Comum (Faltam {75 - score_atual} pontos para High Score)")
+        score = s1+s2+s3+s4+s5+s6
+        st.write(f"**Score:** {score}/100")
+        if score >= 75: st.success("✅ **HIGH SCORE!**")
+        else: st.info("ℹ️ Lead Padrão")
 
     st.divider()
-
-    # --- DEFINIÇÃO DO QUE É HIGH SCORE (TABELA FIXA) ---
-    st.subheader("📚 Critérios de Qualidade (Scorecard Oficial)")
-    df_rules = pd.DataFrame({
-        "Critério": [
-            "Nº de unidades / colaboradores",
-            "Urgência do projeto",
-            "Abertura para proposta",
-            "Dor clara identificada",
-            "Histórico de troca de fornecedor",
-            "Tipo de síndico"
-        ],
-        "Peso (Pontos)": [25, 20, 20, 15, 10, 10],
-        "Importância": ["Alto 🔴", "Alto 🔴", "Alto 🔴", "Médio 🟡", "Médio 🟡", "Baixo 🔵"]
-    })
-    st.table(df_rules)
-    st.caption("ℹ️ **High Score:** Leads que somam **75 pontos ou mais**.")
-
-    st.divider()
-
-    # --- SIMULADOR FINANCEIRO ---
     st.subheader("💰 Simulador de Ganhos SDR")
     
-    col_sdr_input, col_sdr_result = st.columns([1, 2])
+    col_input, col_result = st.columns([1, 2])
 
-    with col_sdr_input:
-        leads_qualificados = st.number_input("1️⃣ Total Leads Qualificados (SQLs)", min_value=0, value=0)
-        leads_high_score = st.number_input("2️⃣ Desses, quantos High Score?", min_value=0, value=0)
-        lojas_fechadas = st.number_input("3️⃣ Lojas Fechadas (Ciclo 120d)", min_value=0, value=0)
+    with col_input:
+        st.markdown("**1. Produção**")
+        leads_padrao = st.number_input("Qtd. Leads Qualificados (Padrão)", min_value=0, value=0)
+        leads_high = st.number_input("Qtd. Leads High Score (Score ≥ 75)", min_value=0, value=0)
+        
+        st.markdown("**2. Conversão**")
+        lojas = st.number_input("Lojas Fechadas (120d)", min_value=0, value=0)
 
-        if leads_high_score > leads_qualificados:
-            st.warning("High Score ajustado para igualar o total.")
-            leads_high_score = leads_qualificados
+    with col_result:
+        # --- LÓGICA ATUALIZADA (SOMA PARA O MÍNIMO) ---
+        
+        # 1. Verifica Volume de Segurança
+        total_leads_gerados = leads_padrao + leads_high
+        meta_minima = 10
+        meta_batida = total_leads_gerados >= meta_minima
+        
+        # 2. Cálculos Financeiros
+        if meta_batida:
+            val_padrao = leads_padrao * 20
+            val_high = leads_high * 40
+            status_meta = f"✅ Meta Batida ({total_leads_gerados} leads)"
+            cor_meta = "normal"
+        else:
+            val_padrao = 0
+            val_high = 0
+            status_meta = f"❌ Meta não batida ({total_leads_gerados}/{meta_minima})"
+            cor_meta = "inverse"
+            
+        val_lojas = lojas * 600
+        total_sdr = val_padrao + val_high + val_lojas
 
-    with col_sdr_result:
-        # Cálculos
-        p1_val = leads_qualificados * 20 if leads_qualificados >= 10 else 0
-        p2_val = leads_high_score * 40
-        p3_val = lojas_fechadas * 600
-        total_sdr = p1_val + p2_val + p3_val
-
+        # --- EXIBIÇÃO ---
         c1, c2, c3 = st.columns(3)
-        with c1: st.metric("Pilar 1: Volume", formatar_moeda(p1_val))
-        with c2: st.metric("Pilar 2: Qualidade", formatar_moeda(p2_val))
-        with c3: st.metric("Pilar 3: Receita", formatar_moeda(p3_val))
+        with c1: 
+            st.metric("Pilar 1: Padrão", formatar_moeda(val_padrao), delta=status_meta, delta_color=cor_meta)
+            st.caption(f"{leads_padrao} leads x R$ 20,00")
+        with c2: 
+            st.metric("Pilar 2: High Score", formatar_moeda(val_high), delta=status_meta, delta_color=cor_meta)
+            st.caption(f"{leads_high} leads x R$ 40,00")
+        with c3: 
+            st.metric("Pilar 3: Lojas", formatar_moeda(val_lojas))
+            st.caption(f"{lojas} lojas x R$ 600,00")
 
         st.markdown(f"""
-        <div style="text-align: center; background-color: #262730; padding: 20px; border-radius: 10px; border: 1px solid #444; margin-top: 10px;">
-            <h3 style="color: #A0A0A0; margin:0; font-size: 1rem;">COMISSÃO TOTAL ESTIMADA</h3>
-            <h1 style="color: #00FF7F; margin:0; font-size: 3em;">{formatar_moeda(total_sdr)}</h1>
+        <div class="total-box">
+            <div class="total-title">COMISSÃO TOTAL ESTIMADA</div>
+            <div class="total-value">{formatar_moeda(total_sdr)}</div>
         </div>
         """, unsafe_allow_html=True)
+        
+        if not meta_batida and total_leads_gerados > 0:
+            st.warning(f"⚠️ Atenção: Você tem {total_leads_gerados} leads somados, mas precisa de no mínimo {meta_minima} (somando Padrão + High Score) para desbloquear o pagamento dos leads.")
