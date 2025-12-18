@@ -36,17 +36,10 @@ st.markdown("""
         border-radius: 10px;
         text-align: center;
         margin-top: 10px;
-        background: linear-gradient(45deg, rgba(52, 152, 219, 0.15), rgba(155, 89, 182, 0.15));
-        border: 2px solid #3498db;
+        background: linear-gradient(45deg, rgba(41, 128, 185, 0.15), rgba(142, 68, 173, 0.15));
+        border: 2px solid #2980b9;
     }
     .head-value { color: #2980b9; font-size: 3.5rem; font-weight: bold; margin: 0; }
-    
-    /* Destaque na Tabela */
-    .highlight-cell {
-        background-color: #27ae60 !important;
-        color: white !important;
-        font-weight: bold;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -70,7 +63,7 @@ if 'lojas' not in st.session_state:
 
 # --- TÍTULO ---
 st.title("🎯 Central de Estratégia Comercial")
-st.caption("Modelo: Matriz Progressiva de Liderança")
+st.caption("Modelo: Head ganha percentual sobre a comissão do Closer (Sem bônus fixo)")
 
 tab_closer, tab_sdr, tab_head = st.tabs(["💼 Simulador CLOSER", "📡 Simulador SDR", "🔒 Área da LIDERANÇA"])
 
@@ -122,7 +115,7 @@ with tab_closer:
 # ==============================================================================
 with tab_sdr:
     with st.expander("🕵️ Calculadora Scorecard"):
-        st.caption("Ferramenta de validação rápida.")
+        st.caption("Validação rápida de leads.")
         if st.checkbox("Unidades ≥ 200 (25pts)"): s=25 
         else: s=0
 
@@ -151,7 +144,7 @@ with tab_sdr:
         st.markdown(f"<div class='total-box'><div class='total-value'>{formatar_moeda(total_sdr)}</div></div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 3: HEAD DE VENDAS (MATRIZ PROGRESSIVA)
+# ABA 3: HEAD DE VENDAS (SEM BÔNUS, SÓ MULTIPLICADOR)
 # ==============================================================================
 with tab_head:
     st.markdown("### 🔒 Painel da Liderança")
@@ -161,7 +154,7 @@ with tab_head:
     if input_senha == SENHA_HEAD:
         st.success("Acesso Autorizado")
         
-        # --- INPUTS DE CONTEXTO ---
+        # --- INPUTS ---
         c_h_1, c_h_2 = st.columns(2)
         with c_h_1:
             st.markdown("##### 1. Dados do Closer")
@@ -176,88 +169,76 @@ with tab_head:
 
         st.divider()
 
-        # --- LÓGICA DA MATRIZ ---
-        # Definindo Fator SDR (Linhas)
+        # --- LÓGICA DA MATRIZ CONSERVADORA ---
+        # 1. Definindo Linha (SDR)
         if pct_sdr < 90:
             fator_sdr_idx = 0 # Ruim
             label_sdr = "Abaixo (<90%)"
         elif 90 <= pct_sdr < 100:
-            fator_sdr_idx = 1 # Quase
-            label_sdr = "Na Trave (90-99%)"
+            fator_sdr_idx = 1 # Médio
+            label_sdr = "Quase (90-99%)"
         else:
-            fator_sdr_idx = 2 # Meta
+            fator_sdr_idx = 2 # Bom
             label_sdr = "Meta Batida (100%+)"
 
-        # Definindo Fator Closer (Colunas)
+        # 2. Definindo Coluna (Closer)
         if fat_total < 100000:
-            fator_closer_idx = -1 # Travado
-            label_closer = "Abaixo de 100k"
+            fator_closer_idx = -1
+            label_closer = "Sem Comissão (<100k)"
         elif 100000 <= fat_total < 130000:
             fator_closer_idx = 0
-            label_closer = "Base (100k-129k)"
+            label_closer = "Base (100k+)"
         elif 130000 <= fat_total < 150000:
             fator_closer_idx = 1
-            label_closer = "Tração (130k-149k)"
+            label_closer = "Tração (130k+)"
         else:
             fator_closer_idx = 2
             label_closer = "Excelência (150k+)"
 
-        # --- MATRIZ DE MULTIPLICADORES ---
-        # Linhas: SDR (Ruim, Médio, Bom)
-        # Colunas: Closer (Base, Tração, Excelência)
-        # Valores: Multiplicador sobre a comissão do Closer
-        
+        # --- A MATRIZ "APENAS UM POUCO MAIOR" ---
+        # SDR (Linhas) x Closer (Colunas)
+        # Valores representam: Multiplicador sobre o ganho do Closer
         matriz = [
-            [0.5, 0.6, 0.7],  # SDR Ruim (<90%)
-            [0.8, 0.9, 1.0],  # SDR Médio (90-99%)
-            [1.1, 1.2, 1.3]   # SDR Bom (100%+) -> AQUI ESTÁ O "POUCO A MAIS QUE O CLOSER"
+            [0.80, 0.85, 0.90],  # SDR Ruim (Head ganha MENOS que Closer)
+            [0.95, 1.00, 1.00],  # SDR Médio (Head empata com Closer)
+            [1.05, 1.10, 1.15]   # SDR Bom (Head ganha de 5% a 15% a mais)
         ]
 
         if fator_closer_idx == -1:
             multiplicador = 0.0
-            msg_final = "❌ Closer não atingiu o gatilho mínimo de R$ 100k."
+            msg_final = "❌ Closer não atingiu o gatilho mínimo. Sem comissão para Head."
         else:
             multiplicador = matriz[fator_sdr_idx][fator_closer_idx]
-            msg_final = f"✅ Fator Aplicado: **{multiplicador}x** sobre a comissão do Closer."
+            msg_final = f"✅ Fator Aplicado: **{multiplicador}x** sobre o ganho do Closer."
 
         comissao_head = comissao_final_closer * multiplicador
 
-        # --- EXIBIÇÃO DA MATRIZ VISUAL ---
-        st.subheader("📊 Tabela Progressiva (Seu Multiplicador)")
+        # --- VISUALIZAÇÃO ---
+        st.subheader("📊 Matriz de Multiplicadores")
+        st.caption("O valor indica quantas vezes o ganho do Closer você receberá.")
         
-        # Criando DataFrame para exibição bonita
         df_matriz = pd.DataFrame(
             data=[
-                ["0.5x (Penalidade)", "0.6x", "0.7x"],
-                ["0.8x", "0.9x", "1.0x (Paridade)"],
-                ["1.1x (Meta)", "1.2x", "1.3x (Super)"]
+                ["0.80x (-20%)", "0.85x", "0.90x (-10%)"],
+                ["0.95x", "1.00x (Igual)", "1.00x (Igual)"],
+                ["1.05x (+5%)", "1.10x (+10%)", "1.15x (+15%)"]
             ],
-            columns=["Closer 100k+", "Closer 130k+", "Closer 150k+"],
+            columns=["Closer 100k", "Closer 130k", "Closer 150k"],
             index=["SDR < 90%", "SDR 90-99%", "SDR 100%+"]
         )
-        
-        # Mostrando a tabela
         st.table(df_matriz)
         
-        # Feedback do Cenário Atual
         if fator_closer_idx != -1:
-            st.info(f"📍 **Situação Atual:** Closer na faixa **{label_closer}** e SDR na faixa **{label_sdr}**.")
+            st.info(f"📍 **Seu Cenário:** Closer **{label_closer}** & SDR **{label_sdr}**")
         
         st.markdown(msg_final)
 
-        # --- RESULTADO FINAL ---
         st.markdown(f"""
         <div class="head-box">
             <div class="total-title">COMISSÃO DA HEAD</div>
             <div class="head-value">{formatar_moeda(comissao_head)}</div>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Simulação de perda (FOMO)
-        if multiplicador < 1.1 and comissao_final_closer > 0:
-            potencial = comissao_final_closer * 1.1
-            perda = potencial - comissao_head
-            st.warning(f"💡 Se o time batesse a meta cheia (SDR 100% + Closer Base), você ganharia: **{formatar_moeda(potencial)}**. Dinheiro na mesa: {formatar_moeda(perda)}.")
 
     elif input_senha:
         st.error("Senha Incorreta")
