@@ -3,7 +3,7 @@ import pandas as pd
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Simulador Comercial - Elite",
+    page_title="Simulador Comercial - Final",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -80,7 +80,7 @@ tab_closer, tab_sdr = st.tabs(["💼 Simulador CLOSER", "📡 Simulador SDR"])
 with tab_closer:
     col_input, col_resumo = st.columns([1, 2])
 
-    # --- Lado Esquerdo: Inputs e Tabela de Referência ---
+    # --- Lado Esquerdo: Inputs ---
     with col_input:
         st.subheader("Nova Loja")
         with st.form("form_loja"):
@@ -102,40 +102,40 @@ with tab_closer:
 
         st.divider()
         
-        # --- TABELA DE REFERÊNCIA DE COMISSÃO (PEDIDO NOVO) ---
-        st.subheader("📚 Tabela de Comissões")
-        st.markdown("Valores baseados no fechamento individual.")
-        
-        df_referencia = pd.DataFrame({
-            "Faixa de Contrato": [
-                "Abaixo de R$ 30k", 
-                "R$ 30k a R$ 39k", 
-                "R$ 40k a R$ 49k", 
-                "R$ 50k a R$ 59k", 
-                "R$ 60k a R$ 69k", 
-                "R$ 70k a R$ 89k", 
-                "Acima de R$ 90k"
-            ],
-            "Regra": [
-                "Zerado", 
-                "Base ÷ 2.0", 
-                "Base ÷ 1.5", 
-                "Base ÷ 1.2", 
-                "Base x 1.3", 
-                "Base x 1.5", 
-                "Base x 1.6"
-            ],
-            "Comissão (R$)": [
-                "R$ 0,00", 
-                "R$ 500,00", 
-                "R$ 666,67", 
-                "R$ 833,33", 
-                "R$ 1.300,00", 
-                "R$ 1.500,00", 
-                "R$ 1.600,00"
-            ]
-        })
-        st.dataframe(df_referencia, hide_index=True, use_container_width=True)
+        # --- TABELA DE REFERÊNCIA (AGORA EM EXPANDER) ---
+        with st.expander("📚 Ver Tabela de Comissões (Referência)"):
+            st.caption("Valores baseados no fechamento individual.")
+            
+            df_referencia = pd.DataFrame({
+                "Faixa de Contrato": [
+                    "Abaixo de R$ 30k", 
+                    "R$ 30k a R$ 39k", 
+                    "R$ 40k a R$ 49k", 
+                    "R$ 50k a R$ 59k", 
+                    "R$ 60k a R$ 69k", 
+                    "R$ 70k a R$ 89k", 
+                    "Acima de R$ 90k"
+                ],
+                "Regra": [
+                    "Zerado", 
+                    "Base ÷ 2.0", 
+                    "Base ÷ 1.5", 
+                    "Base ÷ 1.2", 
+                    "Base x 1.3", 
+                    "Base x 1.5", 
+                    "Base x 1.6"
+                ],
+                "Comissão (R$)": [
+                    "R$ 0,00", 
+                    "R$ 500,00", 
+                    "R$ 666,67", 
+                    "R$ 833,33", 
+                    "R$ 1.300,00", 
+                    "R$ 1.500,00", 
+                    "R$ 1.600,00"
+                ]
+            })
+            st.dataframe(df_referencia, hide_index=True, use_container_width=True)
 
     # --- Lado Direito: Resultados ---
     with col_resumo:
@@ -199,14 +199,11 @@ with tab_sdr:
         lojas = st.number_input("Lojas Fechadas (120d)", min_value=0, value=0)
 
     with col_result:
-        # --- LÓGICA ATUALIZADA (SOMA PARA O MÍNIMO) ---
-        
-        # 1. Verifica Volume de Segurança
+        # --- LÓGICA DE SOMA (PADRÃO + HIGH = META) ---
         total_leads_gerados = leads_padrao + leads_high
         meta_minima = 10
         meta_batida = total_leads_gerados >= meta_minima
         
-        # 2. Cálculos Financeiros
         if meta_batida:
             val_padrao = leads_padrao * 20
             val_high = leads_high * 40
@@ -241,4 +238,4 @@ with tab_sdr:
         """, unsafe_allow_html=True)
         
         if not meta_batida and total_leads_gerados > 0:
-            st.warning(f"⚠️ Atenção: Você tem {total_leads_gerados} leads somados, mas precisa de no mínimo {meta_minima} (somando Padrão + High Score) para desbloquear o pagamento dos leads.")
+            st.warning(f"⚠️ Atenção: Você tem {total_leads_gerados} leads somados, mas precisa de no mínimo {meta_minima} (Padrão + High Score) para desbloquear.")
