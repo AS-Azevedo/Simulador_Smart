@@ -163,7 +163,7 @@ with tab_head:
             
         with c_h_2:
             st.markdown("##### 2. Dados do SDR")
-            meta_sdr_team = st.number_input("Meta High Score (Time)", value=20)
+            meta_sdr_team = st.number_input("Meta High Score (Time)", value=10)
             realizado_sdr = st.number_input("High Score Entregues", min_value=0)
             pct_sdr = (realizado_sdr / meta_sdr_team) * 100 if meta_sdr_team > 0 else 0
 
