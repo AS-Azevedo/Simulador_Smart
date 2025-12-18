@@ -29,7 +29,6 @@ st.markdown("""
         background-color: rgba(39, 174, 96, 0.15);
         border: 2px solid #27ae60;
     }
-    .total-title { font-size: 1.2rem; opacity: 0.8; }
     .total-value { color: #27ae60; font-size: 3rem; font-weight: bold; margin: 0; }
     
     .head-box {
@@ -37,10 +36,17 @@ st.markdown("""
         border-radius: 10px;
         text-align: center;
         margin-top: 10px;
-        background: linear-gradient(45deg, rgba(142, 68, 173, 0.15), rgba(41, 128, 185, 0.15));
-        border: 2px solid #8e44ad;
+        background: linear-gradient(45deg, rgba(52, 152, 219, 0.15), rgba(155, 89, 182, 0.15));
+        border: 2px solid #3498db;
     }
-    .head-value { color: #9b59b6; font-size: 3.5rem; font-weight: bold; margin: 0; }
+    .head-value { color: #2980b9; font-size: 3.5rem; font-weight: bold; margin: 0; }
+    
+    /* Destaque na Tabela */
+    .highlight-cell {
+        background-color: #27ae60 !important;
+        color: white !important;
+        font-weight: bold;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -64,7 +70,7 @@ if 'lojas' not in st.session_state:
 
 # --- TÍTULO ---
 st.title("🎯 Central de Estratégia Comercial")
-st.caption("1 Closer | 2 SDRs | 1 Head")
+st.caption("Modelo: Matriz Progressiva de Liderança")
 
 tab_closer, tab_sdr, tab_head = st.tabs(["💼 Simulador CLOSER", "📡 Simulador SDR", "🔒 Área da LIDERANÇA"])
 
@@ -91,28 +97,18 @@ with tab_closer:
             st.session_state['lojas'] = []
             st.rerun()
 
-        with st.expander("📚 Tabela de Comissões"):
-            st.markdown("""
-            | Faixa | Regra | Valor |
-            | :--- | :--- | :--- |
-            | < 30k | Zerado | R$ 0 |
-            | 30k-39k | ÷ 2.0 | R$ 500 |
-            | 60k-69k | x 1.3 | R$ 1.300 |
-            | ≥ 90k | x 1.6 | R$ 1.600 |
-            """)
-
     with col_resumo:
         total_fat = sum(l['Valor Contrato'] for l in st.session_state['lojas'])
         total_com_bruta = sum(l['Comissão Prevista'] for l in st.session_state['lojas'])
         gatilho_atingido = total_fat >= 100000
-        comissao_final = total_com_bruta if gatilho_atingido else 0.00
+        comissao_final_closer = total_com_bruta if gatilho_atingido else 0.00
         
         st.subheader("Performance do Closer")
         k1, k2, k3 = st.columns(3)
         k1.metric("Faturamento Total", formatar_moeda(total_fat))
         k2.metric("Gatilho 100k", "LIBERADO" if gatilho_atingido else "TRAVADO", 
                   delta="Bônus Ativo" if gatilho_atingido else "Sem Bônus")
-        k3.metric("Comissão Closer", formatar_moeda(comissao_final))
+        k3.metric("Comissão Closer", formatar_moeda(comissao_final_closer))
         
         if st.session_state['lojas']:
             st.divider()
@@ -126,9 +122,9 @@ with tab_closer:
 # ==============================================================================
 with tab_sdr:
     with st.expander("🕵️ Calculadora Scorecard"):
+        st.caption("Ferramenta de validação rápida.")
         if st.checkbox("Unidades ≥ 200 (25pts)"): s=25 
         else: s=0
-        st.caption("Scorecard simplificado para verificação.")
 
     st.divider()
     
@@ -149,83 +145,119 @@ with tab_sdr:
         total_sdr = v_padrao + v_high + v_lojas
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("Padrão", formatar_moeda(v_padrao), delta="Meta Batida" if batido else "Abaixo Meta")
+        c1.metric("Padrão", formatar_moeda(v_padrao))
         c2.metric("High Score", formatar_moeda(v_high))
         c3.metric("Lojas", formatar_moeda(v_lojas))
         st.markdown(f"<div class='total-box'><div class='total-value'>{formatar_moeda(total_sdr)}</div></div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 3: HEAD DE VENDAS (COM SENHA)
+# ABA 3: HEAD DE VENDAS (MATRIZ PROGRESSIVA)
 # ==============================================================================
 with tab_head:
-    st.markdown("### 🔒 Acesso Restrito à Liderança")
+    st.markdown("### 🔒 Painel da Liderança")
     
-    # --- BLOQUEIO DE SEGURANÇA ---
-    input_senha = st.text_input("Digite a senha de acesso:", type="password", help="Solicite ao administrador.")
+    input_senha = st.text_input("Senha de acesso:", type="password")
     
     if input_senha == SENHA_HEAD:
-        st.success("Acesso Liberado ✅")
-        st.divider()
+        st.success("Acesso Autorizado")
         
-        # --- CONTEÚDO ORIGINAL DA HEAD (SÓ MOSTRA SE SENHA OK) ---
-        col_h_input, col_h_res = st.columns([1, 2])
-
-        with col_h_input:
-            st.markdown("**1. Resultado Financeiro**")
-            valor_auto = sum(l['Valor Contrato'] for l in st.session_state['lojas'])
-            fat_closer = st.number_input("Faturamento (Closer)", min_value=0.0, value=float(valor_auto), step=1000.0)
+        # --- INPUTS DE CONTEXTO ---
+        c_h_1, c_h_2 = st.columns(2)
+        with c_h_1:
+            st.markdown("##### 1. Dados do Closer")
+            st.info(f"Comissão Atual do Closer: **{formatar_moeda(comissao_final_closer)}**")
+            fat_total = sum(l['Valor Contrato'] for l in st.session_state['lojas'])
             
-            st.markdown("**2. Qualidade do Funil**")
+        with c_h_2:
+            st.markdown("##### 2. Dados do SDR")
             meta_sdr_team = st.number_input("Meta High Score (Time)", value=20)
             realizado_sdr = st.number_input("High Score Entregues", min_value=0)
+            pct_sdr = (realizado_sdr / meta_sdr_team) * 100 if meta_sdr_team > 0 else 0
 
-        with col_h_res:
-            # LÓGICA HEAD
-            meta_sdr_batida = realizado_sdr >= meta_sdr_team
-            
-            if meta_sdr_batida:
-                taxa_comissao = 0.05 
-                desc_taxa = "🚀 5.0% (Qualidade OK)"
-                cor_taxa = "normal"
-            else:
-                taxa_comissao = 0.025
-                desc_taxa = "⚠️ 2.5% (Baixa Qualidade)"
-                cor_taxa = "inverse"
-                
-            comissao_vendas = fat_closer * taxa_comissao
-            
-            bonus_fixo = 0.00
-            desc_bonus = "❌ Sem Bônus"
-            
-            if fat_closer >= 150000:
-                bonus_fixo = 4000.00
-                desc_bonus = "🏆 R$ 4.000 (Excelência > 150k)"
-            elif fat_closer >= 100000:
-                bonus_fixo = 1500.00
-                desc_bonus = "✅ R$ 1.500 (Meta > 100k)"
-            
-            total_head = comissao_vendas + bonus_fixo
+        st.divider()
 
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Faturamento", formatar_moeda(fat_closer))
-            m2.metric("Qualidade SDR", "Batida" if meta_sdr_batida else "Abaixo", delta=f"{int(realizado_sdr)}/{int(meta_sdr_team)}")
-            m3.metric("Taxa Aplicada", f"{taxa_comissao*100:.1f}%", delta=desc_taxa, delta_color=cor_taxa)
-            
-            st.divider()
-            
-            c_venda, c_bonus = st.columns(2)
-            c_venda.metric("Comissão Variável", formatar_moeda(comissao_vendas))
-            c_bonus.metric("Bônus Performance", formatar_moeda(bonus_fixo), delta=desc_bonus)
-
-            st.markdown(f"""
-            <div class="head-box">
-                <div class="total-title">COMISSÃO TOTAL (HEAD)</div>
-                <div class="head-value">{formatar_moeda(total_head)}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-    else:
-        if input_senha:
-            st.error("Senha incorreta. Acesso negado.")
+        # --- LÓGICA DA MATRIZ ---
+        # Definindo Fator SDR (Linhas)
+        if pct_sdr < 90:
+            fator_sdr_idx = 0 # Ruim
+            label_sdr = "Abaixo (<90%)"
+        elif 90 <= pct_sdr < 100:
+            fator_sdr_idx = 1 # Quase
+            label_sdr = "Na Trave (90-99%)"
         else:
-            st.info("Digite a senha para visualizar o painel gerencial.")
+            fator_sdr_idx = 2 # Meta
+            label_sdr = "Meta Batida (100%+)"
+
+        # Definindo Fator Closer (Colunas)
+        if fat_total < 100000:
+            fator_closer_idx = -1 # Travado
+            label_closer = "Abaixo de 100k"
+        elif 100000 <= fat_total < 130000:
+            fator_closer_idx = 0
+            label_closer = "Base (100k-129k)"
+        elif 130000 <= fat_total < 150000:
+            fator_closer_idx = 1
+            label_closer = "Tração (130k-149k)"
+        else:
+            fator_closer_idx = 2
+            label_closer = "Excelência (150k+)"
+
+        # --- MATRIZ DE MULTIPLICADORES ---
+        # Linhas: SDR (Ruim, Médio, Bom)
+        # Colunas: Closer (Base, Tração, Excelência)
+        # Valores: Multiplicador sobre a comissão do Closer
+        
+        matriz = [
+            [0.5, 0.6, 0.7],  # SDR Ruim (<90%)
+            [0.8, 0.9, 1.0],  # SDR Médio (90-99%)
+            [1.1, 1.2, 1.3]   # SDR Bom (100%+) -> AQUI ESTÁ O "POUCO A MAIS QUE O CLOSER"
+        ]
+
+        if fator_closer_idx == -1:
+            multiplicador = 0.0
+            msg_final = "❌ Closer não atingiu o gatilho mínimo de R$ 100k."
+        else:
+            multiplicador = matriz[fator_sdr_idx][fator_closer_idx]
+            msg_final = f"✅ Fator Aplicado: **{multiplicador}x** sobre a comissão do Closer."
+
+        comissao_head = comissao_final_closer * multiplicador
+
+        # --- EXIBIÇÃO DA MATRIZ VISUAL ---
+        st.subheader("📊 Tabela Progressiva (Seu Multiplicador)")
+        
+        # Criando DataFrame para exibição bonita
+        df_matriz = pd.DataFrame(
+            data=[
+                ["0.5x (Penalidade)", "0.6x", "0.7x"],
+                ["0.8x", "0.9x", "1.0x (Paridade)"],
+                ["1.1x (Meta)", "1.2x", "1.3x (Super)"]
+            ],
+            columns=["Closer 100k+", "Closer 130k+", "Closer 150k+"],
+            index=["SDR < 90%", "SDR 90-99%", "SDR 100%+"]
+        )
+        
+        # Mostrando a tabela
+        st.table(df_matriz)
+        
+        # Feedback do Cenário Atual
+        if fator_closer_idx != -1:
+            st.info(f"📍 **Situação Atual:** Closer na faixa **{label_closer}** e SDR na faixa **{label_sdr}**.")
+        
+        st.markdown(msg_final)
+
+        # --- RESULTADO FINAL ---
+        st.markdown(f"""
+        <div class="head-box">
+            <div class="total-title">COMISSÃO DA HEAD</div>
+            <div class="head-value">{formatar_moeda(comissao_head)}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Simulação de perda (FOMO)
+        if multiplicador < 1.1 and comissao_final_closer > 0:
+            potencial = comissao_final_closer * 1.1
+            perda = potencial - comissao_head
+            st.warning(f"💡 Se o time batesse a meta cheia (SDR 100% + Closer Base), você ganharia: **{formatar_moeda(potencial)}**. Dinheiro na mesa: {formatar_moeda(perda)}.")
+
+    elif input_senha:
+        st.error("Senha Incorreta")
