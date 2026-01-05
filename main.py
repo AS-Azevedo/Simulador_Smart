@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 # --- SENHA DE ACESSO HEAD ---
-SENHA_HEAD = "andersonamordaminhavida"
+SENHA_HEAD = "admin2025"
 
 # --- CSS ADAPTATIVO (AUTO THEME) ---
 st.markdown("""
