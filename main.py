@@ -3,24 +3,27 @@ import pandas as pd
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Simulador Comercial",
-    page_icon="💰",
+    page_title="Simulador Comercial - Versão Final",
+    page_icon="💎",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- SENHA DE ACESSO (Edite aqui) ---
-SENHA_HEAD = "andersonamordaminhavida"  # <--- Defina a senha da Head aqui
+# --- SENHA DE ACESSO HEAD ---
+SENHA_HEAD = "andersonamordaminhavida"
 
-# --- CSS ADAPTATIVO ---
+# --- CSS ADAPTATIVO (AUTO THEME) ---
 st.markdown("""
 <style>
+    /* Cartões de Métricas */
     div[data-testid="stMetric"] {
         background-color: rgba(128, 128, 128, 0.1);
         border: 1px solid rgba(128, 128, 128, 0.2);
         padding: 15px;
         border-radius: 10px;
     }
+    
+    /* Caixa de Totalização */
     .total-box {
         padding: 20px; 
         border-radius: 10px; 
@@ -31,6 +34,7 @@ st.markdown("""
     }
     .total-value { color: #27ae60; font-size: 3rem; font-weight: bold; margin: 0; }
     
+    /* Caixa da Head */
     .head-box {
         padding: 20px;
         border-radius: 10px;
@@ -63,7 +67,7 @@ if 'lojas' not in st.session_state:
 
 # --- TÍTULO ---
 st.title("🎯 Central de Estratégia Comercial")
-st.caption("Modelo: Head ganha percentual sobre a comissão do Closer (Sem bônus fixo)")
+st.caption("Sistema Unificado: Closer | SDR | Head")
 
 tab_closer, tab_sdr, tab_head = st.tabs(["💼 Simulador CLOSER", "📡 Simulador SDR", "🔒 Área da LIDERANÇA"])
 
@@ -72,6 +76,8 @@ tab_closer, tab_sdr, tab_head = st.tabs(["💼 Simulador CLOSER", "📡 Simulado
 # ==============================================================================
 with tab_closer:
     col_input, col_resumo = st.columns([1, 2])
+    
+    # --- Coluna Esquerda: Inputs + TABELA RESTAURADA ---
     with col_input:
         st.subheader("Nova Loja")
         with st.form("form_loja"):
@@ -90,6 +96,19 @@ with tab_closer:
             st.session_state['lojas'] = []
             st.rerun()
 
+        st.divider()
+        
+        # --- TABELA DE COMISSÃO (RESTAURADA) ---
+        with st.expander("📚 Ver Tabela de Comissões (Referência)", expanded=False):
+            st.caption("Regra de pagamento por loja individual:")
+            df_ref = pd.DataFrame({
+                "Faturamento": ["< 30k", "30k - 39k", "40k - 49k", "50k - 59k", "60k - 69k", "70k - 89k", "≥ 90k"],
+                "Fator": ["Zerado", "Base ÷ 2.0", "Base ÷ 1.5", "Base ÷ 1.2", "Base x 1.3", "Base x 1.5", "Base x 1.6"],
+                "Comissão": ["R$ 0", "R$ 500", "R$ 666", "R$ 833", "R$ 1.300", "R$ 1.500", "R$ 1.600"]
+            })
+            st.dataframe(df_ref, hide_index=True, use_container_width=True)
+
+    # --- Coluna Direita: Resultados ---
     with col_resumo:
         total_fat = sum(l['Valor Contrato'] for l in st.session_state['lojas'])
         total_com_bruta = sum(l['Comissão Prevista'] for l in st.session_state['lojas'])
@@ -114,19 +133,37 @@ with tab_closer:
 # ABA 2: SDR
 # ==============================================================================
 with tab_sdr:
-    with st.expander("🕵️ Calculadora Scorecard"):
-        st.caption("Validação rápida de leads.")
-        if st.checkbox("Unidades ≥ 200 (25pts)"): s=25 
-        else: s=0
+    
+    # --- CALCULADORA DE SCORECARD (RESTAURADA) ---
+    with st.expander("🕵️ Calculadora: Esse lead é High Score?", expanded=False):
+        st.caption("Marque os itens presentes no lead. Soma necessária: 75 pontos.")
+        c1, c2 = st.columns(2)
+        with c1:
+            s1 = 25 if st.checkbox("Unidades/Colab ≥ 200 (25 pts)") else 0
+            s2 = 20 if st.checkbox("Urgência do projeto (20 pts)") else 0
+            s3 = 20 if st.checkbox("Abertura para proposta (20 pts)") else 0
+        with c2:
+            s4 = 15 if st.checkbox("Dor clara identificada (15 pts)") else 0
+            s5 = 10 if st.checkbox("Histórico troca fornecedor (10 pts)") else 0
+            s6 = 10 if st.checkbox("Decisor acessível (10 pts)") else 0
+        
+        score_atual = s1+s2+s3+s4+s5+s6
+        st.markdown(f"**Score Total:** `{score_atual} / 100`")
+        
+        if score_atual >= 75:
+            st.success("✅ **HIGH SCORE!** Pode cadastrar como Lead High Score.")
+        else:
+            st.warning("ℹ️ **LEAD PADRÃO.** Cadastre como Lead Qualificado Normal.")
 
     st.divider()
     
     col_sdr_in, col_sdr_out = st.columns([1, 2])
     with col_sdr_in:
-        st.markdown("**Produção**")
-        l_padrao = st.number_input("Leads Padrão", 0)
-        l_high = st.number_input("Leads High Score", 0)
-        lojas = st.number_input("Lojas Fechadas", 0)
+        st.markdown("**Produção Mensal**")
+        l_padrao = st.number_input("Qtd. Leads Padrão (< 75 pts)", 0)
+        l_high = st.number_input("Qtd. Leads High Score (≥ 75 pts)", 0)
+        lojas = st.number_input("Lojas Fechadas (120 dias)", 0)
+        
     with col_sdr_out:
         meta_min = 10
         total_leads = l_padrao + l_high
@@ -138,13 +175,13 @@ with tab_sdr:
         total_sdr = v_padrao + v_high + v_lojas
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("Padrão", formatar_moeda(v_padrao))
+        c1.metric("Padrão", formatar_moeda(v_padrao), delta="Meta Batida" if batido else "Abaixo Meta")
         c2.metric("High Score", formatar_moeda(v_high))
         c3.metric("Lojas", formatar_moeda(v_lojas))
         st.markdown(f"<div class='total-box'><div class='total-value'>{formatar_moeda(total_sdr)}</div></div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 3: HEAD DE VENDAS (SEM BÔNUS, SÓ MULTIPLICADOR)
+# ABA 3: HEAD DE VENDAS (MATRIZ CONSERVADORA)
 # ==============================================================================
 with tab_head:
     st.markdown("### 🔒 Painel da Liderança")
@@ -163,13 +200,14 @@ with tab_head:
             
         with c_h_2:
             st.markdown("##### 2. Dados do SDR")
-            meta_sdr_team = st.number_input("Meta High Score (Time)", value=10)
+            meta_sdr_team = st.number_input("Meta High Score (Time)", value=20)
             realizado_sdr = st.number_input("High Score Entregues", min_value=0)
             pct_sdr = (realizado_sdr / meta_sdr_team) * 100 if meta_sdr_team > 0 else 0
 
         st.divider()
 
-        # --- LÓGICA DA MATRIZ CONSERVADORA ---
+        # --- LÓGICA DA MATRIZ CONSERVADORA (+5% a +15%) ---
+        
         # 1. Definindo Linha (SDR)
         if pct_sdr < 90:
             fator_sdr_idx = 0 # Ruim
@@ -196,8 +234,6 @@ with tab_head:
             label_closer = "Excelência (150k+)"
 
         # --- A MATRIZ "APENAS UM POUCO MAIOR" ---
-        # SDR (Linhas) x Closer (Colunas)
-        # Valores representam: Multiplicador sobre o ganho do Closer
         matriz = [
             [0.80, 0.85, 0.90],  # SDR Ruim (Head ganha MENOS que Closer)
             [0.95, 1.00, 1.00],  # SDR Médio (Head empata com Closer)
@@ -215,7 +251,7 @@ with tab_head:
 
         # --- VISUALIZAÇÃO ---
         st.subheader("📊 Matriz de Multiplicadores")
-        st.caption("O valor indica quantas vezes o ganho do Closer você receberá.")
+        st.caption("Quanto você ganha em relação ao Closer (Ex: 1.10x = Ganho do Closer + 10%)")
         
         df_matriz = pd.DataFrame(
             data=[
@@ -226,9 +262,11 @@ with tab_head:
             columns=["Closer 100k", "Closer 130k", "Closer 150k"],
             index=["SDR < 90%", "SDR 90-99%", "SDR 100%+"]
         )
+        # Use st.table para forçar visualização completa
         st.table(df_matriz)
         
         if fator_closer_idx != -1:
+            # Destaque do cenário atual
             st.info(f"📍 **Seu Cenário:** Closer **{label_closer}** & SDR **{label_sdr}**")
         
         st.markdown(msg_final)
