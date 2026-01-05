@@ -3,8 +3,8 @@ import pandas as pd
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Simulador Comercial - Versão Final",
-    page_icon="💎",
+    page_title="Simulador Comercial",
+    page_icon="💰",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
